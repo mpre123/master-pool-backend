@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATE_FILE = join(__dirname, '../../sync-state.json')
 const MASTERS_EVENT_ID = '401811941'
-const SYNC_INTERVAL_MS = 2 * 60 * 1000 // every 2 minutes
+const SYNC_INTERVAL_MS = 5 * 60 * 1000 // every 5 minutes
 
 // Load persisted event ID from disk (survives deploys, not server restarts on Replit)
 function loadEventId(): string {
@@ -60,6 +60,13 @@ function matchName(espnName: string, dbNames: string[]): string | null {
   return null
 }
 
+function isDuringTournamentHours(): boolean {
+  const now = new Date()
+  const eastern = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }))
+  const hour = eastern.getHours()
+  return hour >= 7 && hour < 19
+}
+
 async function fetchLeaderboard(eventId: string): Promise<ESPNCompetitor[]> {
   const url = `https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard?league=pga&event=${eventId}`
   const res = await fetch(url, {
@@ -72,6 +79,11 @@ async function fetchLeaderboard(eventId: string): Promise<ESPNCompetitor[]> {
 }
 
 async function syncScores(eventId: string) {
+  if (!isDuringTournamentHours()) {
+    logger.info('Score sync skipped — outside tournament hours (7am-7pm ET)')
+    return
+  }
+
   const supabaseUrl = process.env['SUPABASE_URL']
   const serviceKey  = process.env['SUPABASE_SERVICE_ROLE_KEY']
   if (!supabaseUrl || !serviceKey) {
@@ -146,12 +158,12 @@ async function syncScores(eventId: string) {
 }
 
 export function startScoreSync() {
-  logger.info({ eventId: activeEventId }, 'Score sync: initialized — will auto-sync every 2 min when players exist')
+  logger.info({ eventId: activeEventId }, 'Score sync: initialized — will auto-sync every 5 min during tournament hours (7am-7pm ET)')
 
   // Run immediately on startup
   void syncScores(activeEventId)
 
-  // Auto-sync every 2 minutes regardless of date
+  // Auto-sync every 5 minutes
   setInterval(() => {
     void syncScores(activeEventId)
   }, SYNC_INTERVAL_MS)
