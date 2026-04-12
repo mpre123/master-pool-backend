@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATE_FILE = join(__dirname, '../../sync-state.json')
 const MASTERS_EVENT_ID = '401811941'
-const SYNC_INTERVAL_MS = 20 * 60 * 1000 // every 20 minutes
+const SYNC_INTERVAL_MS = 5 * 60 * 1000 // every 5 minutes
 
 // Load persisted event ID from disk (survives deploys, not server restarts on Replit)
 function loadEventId(): string {
